@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>合同签署</title>
+<style>
+:root {
+  color-scheme: light;
+  --pri: #1565c0;
+  --bg: #f0f2f5;
+  --card: #fff;
+  --txt: #1a1a1a;
+  --sub: #666;
+  --brd: #e0e0e0;
+  --err: #c62828;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100dvh;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+/* HEADER */
+.hdr {
+  background: var(--pri);
+  color: #fff;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  padding-bottom: 12px;
+  padding-left: 16px;
+  padding-right: 16px;
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 200;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+
+.hdr-title { font-size: 17px; font-weight: 600; text-align: center; margin-bottom: 10px; }
+
+.prog-bar { height: 3px; background: rgba(255,255,255,.3); border-radius: 2px; overflow: hidden; }
+.prog-fill { height: 100%; background: #fff; border-radius: 2px; transition: width .35s ease; }
+.step-info { text-align: center; font-size: 12px; opacity: .8; margin-top: 5px; }
+
+/* CONTENT */
+.content { padding: 16px; max-width: 480px; margin: 0 auto; }
+
+.step { display: none; }
+.step.active { display: block; }
+
+/* CARDS */
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+
+.card-hd {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pri);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--brd);
+}
+
+/* TYPE SELECTION */
+.type-intro {
+  text-align: center;
+  font-size: 15px;
+  color: var(--sub);
+  margin-bottom: 20px;
+  padding-top: 8px;
+}
+
+.type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.type-card {
+  border: 2px solid var(--brd);
+  border-radius: 16px;
+  padding: 28px 12px 22px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--card);
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.type-card:active { transform: scale(.96); }
+
+.type-card.sel {
+  border-color: var(--pri);
+  background: #e8f0fe;
+  box-shadow: 0 0 0 3px rgba(21,101,192,.18);
+}
+
+.type-icon { font-size: 42px; margin-bottom: 10px; line-height: 1; }
+.type-name { font-size: 14px; font-weight: 700; color: var(--txt); }
+.type-sub { font-size: 12px; color: var(--sub); margin-top: 4px; }
+
+/* FIELDS */
+.field { margin-bottom: 13px; }
+.field:last-child { margin-bottom: 0; }
+
+label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 5px; }
+label .req { color: var(--err); margin-left: 1px; }
+
+input[type=text],
+input[type=tel],
+input[type=number],
+input[type=datetime-local] {
+  width: 100%;
+  border: 1.5px solid var(--brd);
+  border-radius: 9px;
+  padding: 11px 13px;
+  font-size: 16px;
+  color: var(--txt);
+  background: #fff;
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+  outline: none;
+}
+
+input:focus {
+  border-color: var(--pri);
+  box-shadow: 0 0 0 3px rgba(21,101,192,.13);
+}
+
+input::placeholder { color: #bbb; }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* SIGNATURE CANVAS */
+.sig-wrap {
+  border: 1.5px dashed #ccc;
+  border-radius: 10px;
+  background: #fafafa;
+  position: relative;
+  overflow: hidden;
+}
+
+.sig-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 165px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.sig-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  color: #c0c0c0;
+  font-size: 13px;
+}
+
+.sig-hint-icon { font-size: 30px; }
+
+.sig-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+.btn-clear {
+  padding: 7px 18px;
+  border: 1.5px solid var(--brd);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--sub);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* REVIEW */
+.review-kv { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; font-size: 14px; line-height: 1.6; }
+.review-kv dt { color: var(--sub); white-space: nowrap; }
+.review-kv dd { color: var(--txt); word-break: break-all; }
+
+.gen-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 16px;
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  border-radius: 13px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: .5px;
+  box-shadow: 0 3px 8px rgba(46,125,50,.35);
+}
+
+.gen-btn:active { background: #1b5e20; }
+
+.gen-note {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+/* NAVIGATION */
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid var(--brd);
+  padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 10px;
+  z-index: 200;
+}
+
+.btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 50px;
+}
+
+.btn-back { background: var(--bg); color: var(--txt); }
+.btn-fwd  { background: var(--pri); color: #fff; }
+</style>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-title" id="hdr-title">选择合同类型</div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+  <div class="step-info" id="step-info">第 1 步，共 7 步</div>
+</div>
+
+<div class="content">
+
+<!-- ── STEP 0: Type Selection ── -->
+<div class="step active" id="s0">
+  <p class="type-intro">请选择需要签署的合同类型</p>
+  <div class="type-grid">
+    <div class="type-card" id="tc-rental" onclick="selectType('rental',this)">
+      <div class="type-icon">🚗</div>
+      <div class="type-name">汽车租赁合同</div>
+      <div class="type-sub">车辆出租协议</div>
+    </div>
+    <div class="type-card" id="tc-driver" onclick="selectType('driver',this)">
+      <div class="type-icon">🤝</div>
+      <div class="type-name">代驾协议</div>
+      <div class="type-sub">代驾服务协议</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STEP 1 租赁: Party A ── -->
+<div class="step" id="s1-rental">
+  <div class="card">
+    <div class="card-hd">甲方信息（出租方）</div>
+    <div class="field"><label>姓名 <span class="req">*</span></label>
+      <input type="text" id="ra-name" placeholder="请输入姓名"></div>
+    <div class="field"><label>签约地点 <span class="req">*</span></label>
+      <input type="text" id="ra-loc" placeholder="请输入签约地点"></div>
+    <div class="field"><label>经办人</label>
+      <input type="text" id="ra-handler" placeholder="经办人姓名（选填）"></div>
+    <div class="field"><label>服务热线</label>
+      <input type="tel" id="ra-tel" placeholder="联系电话（选填）"></div>
+  </div>
+</div>
+
+<!-- ── STEP 1 代驾: Party A ── -->
+<div class="step" id="s1-driver">
+  <div class="card">
+    <div class="card-hd">甲方信息（委托方）</div>
+    <div class="field"><label>姓名 <span class="req">*</span></label>
+      <input type="text" id="da-name" placeholder="请输入姓名"></div>
+    <div class="field"><label>身份证号 <span class="req">*</span></label>
+      <input type="text" id="da-id" placeholder="请输入身份证号" maxlength="18" inputmode="text"></div>
+    <div class="field"><label>联系电话 <span class="req">*</span></label>
+      <input type="tel" id="da-tel" placeholder="请输入手机号码"></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">车辆信息</div>
+    <div class="field"><label>车辆品牌 <span class="req">*</span></label>
+      <input type="text" id="da-brand" placeholder="如：大众、丰田"></div>
+    <div class="field"><label>车辆型号 <span class="req">*</span></label>
+      <input type="text" id="da-model" placeholder="如：帕萨特、凯美瑞"></div>
+    <div class="field"><label>车牌号 <span class="req">*</span></label>
+      <input type="text" id="da-plate" placeholder="如：粤A·12345"></div>
+  </div>
+</div>
+
+<!-- ── STEP 2 租赁: Party B ── -->
+<div class="step" id="s2-rental">
+  <div class="card">
+    <div class="card-hd">乙方信息（承租方）</div>
+    <div class="field"><label>姓名 <span class="req">*</span></label>
+      <input type="text" id="rb-name" placeholder="请输入姓名"></div>
+    <div class="field"><label>签约地点 <span class="req">*</span></label>
+      <input type="text" id="rb-loc" placeholder="请输入签约地点"></div>
+    <div class="field"><label>身份证号 <span class="req">*</span></label>
+      <input type="text" id="rb-id" placeholder="请输入身份证号" maxlength="18" inputmode="text"></div>
+    <div class="field"><label>联系电话 <span class="req">*</span></label>
+      <input type="tel" id="rb-tel" placeholder="请输入手机号码"></div>
+  </div>
+</div>
+
+<!-- ── STEP 2 代驾: Party B ── -->
+<div class="step" id="s2-driver">
+  <div class="card">
+    <div class="card-hd">乙方信息（受托方）</div>
+    <div class="field"><label>姓名 / 公司名 <span class="req">*</span></label>
+      <input type="text" id="db-name" placeholder="个人姓名或公司名称"></div>
+    <div class="field"><label>身份证号</label>
+      <input type="text" id="db-id" placeholder="身份证号（公司可不填）" maxlength="18" inputmode="text"></div>
+    <div class="field"><label>联系电话 <span class="req">*</span></label>
+      <input type="tel" id="db-tel" placeholder="请输入手机号码"></div>
+  </div>
+</div>
+
+<!-- ── STEP 3 租赁: Contract Details ── -->
+<div class="step" id="s3-rental">
+  <div class="card">
+    <div class="card-hd">车辆与目的地</div>
+    <div class="field"><label>车牌号 <span class="req">*</span></label>
+      <input type="text" id="r-plate" placeholder="如：粤A·12345"></div>
+    <div class="field"><label>核定人数（人）<span class="req">*</span></label>
+      <input type="number" id="r-seats" placeholder="如：5" min="1" max="55" inputmode="numeric"></div>
+    <div class="field"><label>乙方前往目的地 <span class="req">*</span></label>
+      <input type="text" id="r-dest" placeholder="目的地地址"></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">租赁期限</div>
+    <div class="field"><label>开始时间 <span class="req">*</span></label>
+      <input type="datetime-local" id="r-start"></div>
+    <div class="field"><label>结束时间 <span class="req">*</span></label>
+      <input type="datetime-local" id="r-end"></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">租赁费用</div>
+    <div class="field-row">
+      <div class="field"><label>日租金（元/天）</label>
+        <input type="number" id="r-dayrate" placeholder="300" inputmode="decimal"></div>
+      <div class="field"><label>时租金（元/时）</label>
+        <input type="number" id="r-hrrate" placeholder="30" inputmode="decimal"></div>
+    </div>
+    <div class="field"><label>甲方收取租金（元）<span class="req">*</span></label>
+      <input type="number" id="r-rent" placeholder="如：600" inputmode="decimal"></div>
+    <div class="field"><label>甲方收取押金（元）<span class="req">*</span></label>
+      <input type="number" id="r-deposit" placeholder="如：1000" inputmode="decimal"></div>
+  </div>
+</div>
+
+<!-- ── STEP 3 代驾: Contract Details ── -->
+<div class="step" id="s3-driver">
+  <div class="card">
+    <div class="card-hd">服务时间</div>
+    <div class="field"><label>开始时间 <span class="req">*</span></label>
+      <input type="datetime-local" id="d-start"></div>
+    <div class="field"><label>结束时间 <span class="req">*</span></label>
+      <input type="datetime-local" id="d-end"></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">代驾费用</div>
+    <div class="field"><label>费用金额（元）<span class="req">*</span></label>
+      <input type="number" id="d-fee" placeholder="如：150" inputmode="decimal"></div>
+  </div>
+</div>
+
+<!-- ── STEP 4: Signature A ── -->
+<div class="step" id="s4">
+  <div class="card">
+    <div class="card-hd">甲方手写签名</div>
+    <p style="font-size:13px;color:#888;margin-bottom:10px;">请用手指在下方区域手写签名</p>
+    <div class="sig-wrap">
+      <canvas id="cvs-a"></canvas>
+      <div class="sig-hint" id="hint-a">
+        <div class="sig-hint-icon">✍️</div>
+        <div>请在此手写签名</div>
+      </div>
+    </div>
+    <div class="sig-actions">
+      <button class="btn-clear" onclick="clearSig('a')">清除重签</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── STEP 5: Signature B ── -->
+<div class="step" id="s5">
+  <div class="card">
+    <div class="card-hd">乙方手写签名</div>
+    <p style="font-size:13px;color:#888;margin-bottom:10px;">请用手指在下方区域手写签名</p>
+    <div class="sig-wrap">
+      <canvas id="cvs-b"></canvas>
+      <div class="sig-hint" id="hint-b">
+        <div class="sig-hint-icon">✍️</div>
+        <div>请在此手写签名</div>
+      </div>
+    </div>
+    <div class="sig-actions">
+      <button class="btn-clear" onclick="clearSig('b')">清除重签</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── STEP 6: Review & Generate ── -->
+<div class="step" id="s6">
+  <div class="card">
+    <div class="card-hd">信息确认</div>
+    <dl class="review-kv" id="review-kv"></dl>
+  </div>
+  <button class="gen-btn" onclick="generate()">生成合同</button>
+  <p class="gen-note">
+    合同将在新页面中打开<br>
+    您可截图、打印或使用浏览器"分享"功能保存
+  </p>
+</div>
+
+</div><!-- /content -->
+
+<!-- NAVIGATION -->
+<div class="nav">
+  <button class="btn btn-back" id="btn-back" onclick="goBack()" style="display:none">上一步</button>
+  <button class="btn btn-fwd"  id="btn-fwd"  onclick="goNext()">下一步</button>
+</div>
+
+<script>
+'use strict';
+
+var type = null;
+var step = 0;
+var STEPS = 7;
+
+var stepNames = [
+  '选择合同类型',
+  '甲方信息',
+  '乙方信息',
+  '合同详情',
+  '甲方签名',
+  '乙方签名',
+  '确认生成'
+];
+
+var sig = {
+  a: { ready: false, hasData: false },
+  b: { ready: false, hasData: false }
+};
+
+/* ── Navigation ── */
+
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(function(el) { el.classList.remove('active'); });
+
+  var id = '';
+  if      (n === 0) { id = 's0'; }
+  else if (n === 1) { id = 's1-' + type; }
+  else if (n === 2) { id = 's2-' + type; }
+  else if (n === 3) { id = 's3-' + type; }
+  else if (n === 4) { id = 's4'; }
+  else if (n === 5) { id = 's5'; }
+  else if (n === 6) { id = 's6'; }
+
+  var el = document.getElementById(id);
+  if (el) el.classList.add('active');
+
+  if (n === 4) { setupCanvas('a'); }
+  if (n === 5) { setupCanvas('b'); }
+  if (n === 6) { buildReview(); }
+
+  document.getElementById('hdr-title').textContent = stepNames[n];
+  document.getElementById('prog').style.width = (n / (STEPS - 1) * 100) + '%';
+  document.getElementById('step-info').textContent = '第 ' + (n + 1) + ' 步，共 ' + STEPS + ' 步';
+
+  var back = document.getElementById('btn-back');
+  var fwd  = document.getElementById('btn-fwd');
+  back.style.display = n > 0 ? 'block' : 'none';
+
+  if (n === 6) {
+    fwd.style.display = 'none';
+  } else {
+    fwd.style.display = 'block';
+    fwd.textContent = n === 5 ? '确认完成' : '下一步';
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goNext() {
+  if (!validate()) return;
+  if (step < STEPS - 1) { step++; showStep(step); }
+}
+
+function goBack() {
+  if (step > 0) { step--; showStep(step); }
+}
+
+/* ── Type Selection ── */
+
+function selectType(t, el) {
+  type = t;
+  document.querySelectorAll('.type-card').forEach(function(c) { c.classList.remove('sel'); });
+  el.classList.add('sel');
+}
+
+/* ── Validation ── */
+
+function g(id) {
+  var el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function validate() {
+  if (step === 0) {
+    if (!type) { alert('请先选择合同类型'); return false; }
+  }
+
+  if (step === 1 && type === 'rental') {
+    if (!g('ra-name') || !g('ra-loc')) { alert('请填写甲方姓名和签约地点'); return false; }
+  }
+  if (step === 1 && type === 'driver') {
+    if (!g('da-name') || !g('da-id') || !g('da-tel') || !g('da-brand') || !g('da-model') || !g('da-plate')) {
+      alert('请填写甲方所有必填信息（标有 * 的项目）'); return false;
+    }
+  }
+
+  if (step === 2 && type === 'rental') {
+    if (!g('rb-name') || !g('rb-loc') || !g('rb-id') || !g('rb-tel')) {
+      alert('请填写乙方所有必填信息'); return false;
+    }
+  }
+  if (step === 2 && type === 'driver') {
+    if (!g('db-name') || !g('db-tel')) { alert('请填写乙方姓名和联系电话'); return false; }
+  }
+
+  if (step === 3 && type === 'rental') {
+    if (!g('r-plate') || !g('r-seats') || !g('r-dest') || !g('r-start') || !g('r-end') || !g('r-rent') || !g('r-deposit')) {
+      alert('请填写合同所有必填信息（标有 * 的项目）'); return false;
+    }
+  }
+  if (step === 3 && type === 'driver') {
+    if (!g('d-start') || !g('d-end') || !g('d-fee')) {
+      alert('请填写服务时间和代驾费用'); return false;
+    }
+  }
+
+  if (step === 4 && !sig.a.hasData) { alert('请完成甲方手写签名'); return false; }
+  if (step === 5 && !sig.b.hasData) { alert('请完成乙方手写签名'); return false; }
+
+  return true;
+}
+
+/* ── Signature Canvas ── */
+
+function setupCanvas(side) {
+  if (sig[side].ready) return;
+  requestAnimationFrame(function() {
+    var cvs = document.getElementById('cvs-' + side);
+    var dpr = window.devicePixelRatio || 1;
+    var cssW = cvs.offsetWidth || 340;
+    var cssH = 165;
+    cvs.width  = cssW * dpr;
+    cvs.height = cssH * dpr;
+
+    var ctx = cvs.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    var drawing = false;
+
+    function xy(e) {
+      var r = cvs.getBoundingClientRect();
+      var src = e.touches ? e.touches[0] : e;
+      return [src.clientX - r.left, src.clientY - r.top];
+    }
+
+    function onStart(e) {
+      e.preventDefault();
+      drawing = true;
+      var p = xy(e);
+      ctx.beginPath();
+      ctx.moveTo(p[0], p[1]);
+      var hint = document.getElementById('hint-' + side);
+      if (hint) hint.style.display = 'none';
+      sig[side].hasData = true;
+    }
+
+    function onMove(e) {
+      e.preventDefault();
+      if (!drawing) return;
+      var p = xy(e);
+      ctx.lineTo(p[0], p[1]);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(p[0], p[1]);
+    }
+
+    function onEnd() { drawing = false; ctx.beginPath(); }
+
+    cvs.addEventListener('touchstart', onStart, { passive: false });
+    cvs.addEventListener('touchmove',  onMove,  { passive: false });
+    cvs.addEventListener('touchend',   onEnd);
+    cvs.addEventListener('mousedown',  onStart);
+    cvs.addEventListener('mousemove',  onMove);
+    cvs.addEventListener('mouseup',    onEnd);
+    cvs.addEventListener('mouseleave', onEnd);
+
+    sig[side].ready = true;
+  });
+}
+
+function clearSig(side) {
+  if (!sig[side].ready) return;
+  var cvs = document.getElementById('cvs-' + side);
+  var dpr = window.devicePixelRatio || 1;
+  cvs.getContext('2d').clearRect(0, 0, cvs.width / dpr, cvs.height / dpr);
+  var hint = document.getElementById('hint-' + side);
+  if (hint) hint.style.display = 'flex';
+  sig[side].hasData = false;
+}
+
+function getSigURL(side) {
+  return document.getElementById('cvs-' + side).toDataURL('image/png');
+}
+
+/* ── Review Summary ── */
+
+function buildReview() {
+  var rows;
+  if (type === 'rental') {
+    rows = [
+      ['合同类型', '汽车租赁合同'],
+      ['甲方姓名', g('ra-name')],
+      ['甲方地点', g('ra-loc')],
+      ['乙方姓名', g('rb-name')],
+      ['车牌号',   g('r-plate')],
+      ['核定人数', g('r-seats') + ' 人'],
+      ['租赁开始', fmtDT(g('r-start'))],
+      ['租赁结束', fmtDT(g('r-end'))],
+      ['收取租金', g('r-rent') + ' 元'],
+      ['收取押金', g('r-deposit') + ' 元']
+    ];
+  } else {
+    rows = [
+      ['协议类型', '代驾服务协议'],
+      ['甲方姓名', g('da-name')],
+      ['甲方电话', g('da-tel')],
+      ['车牌号',   g('da-plate')],
+      ['乙方名称', g('db-name')],
+      ['服务开始', fmtDT(g('d-start'))],
+      ['服务结束', fmtDT(g('d-end'))],
+      ['代驾费用', g('d-fee') + ' 元']
+    ];
+  }
+  document.getElementById('review-kv').innerHTML = rows.map(function(r) {
+    return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>';
+  }).join('');
+}
+
+/* ── Helpers ── */
+
+function fmtDT(s) {
+  if (!s) return '';
+  var d = new Date(s);
+  return d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日 '
+       + d.getHours() + '时' + pad(d.getMinutes()) + '分';
+}
+
+function fmtD(s) {
+  if (!s) return '';
+  var d = new Date(s);
+  return d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
+
+function fmtNow() {
+  var d = new Date();
+  return d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日 '
+       + d.getHours() + ':' + pad(d.getMinutes());
+}
+
+function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ── Contract CSS ── */
+
+function cCSS() {
+  return 'body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB",'
+    + '"Noto Sans SC","Microsoft YaHei",SimSun,sans-serif;max-width:760px;margin:0 auto;'
+    + 'padding:56px 24px 36px;color:#111;line-height:1.95;font-size:14px;background:#fff;}'
+    + 'h1{text-align:center;font-size:20px;font-weight:700;letter-spacing:4px;margin-bottom:2px;}'
+    + '.cno{text-align:right;font-size:13px;font-weight:700;color:#c00;margin-top:-20px;}'
+    + '.hdr2{display:flex;gap:12px;margin:10px 0 6px;}'
+    + '.hcol{flex:1;line-height:2.1;}'
+    + '.hcol p{margin:0;}'
+    + '.sh{font-weight:700;margin:12px 0 4px;}'
+    + '.p{margin:3px 0;line-height:1.9;text-indent:2em;}'
+    + '.pi{margin:3px 0;line-height:1.9;padding-left:4em;text-indent:0;}'
+    + '.bl{display:inline-block;border-bottom:1px solid #222;min-width:60px;'
+    + 'text-align:center;padding:0 2px;vertical-align:bottom;line-height:1.5;}'
+    + '.sigrow{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;'
+    + 'padding-top:12px;border-top:1px solid #999;}'
+    + '.sigcol{flex:1;min-width:200px;line-height:2.2;}'
+    + '.sigcol p{margin:0;}'
+    + '.sigcol img{height:58px;max-width:180px;object-fit:contain;'
+    + 'border:1px solid #ccc;border-radius:3px;background:#fff;vertical-align:middle;}'
+    + '.sbar{position:fixed;top:0;left:0;right:0;background:#1565c0;padding:8px 12px;'
+    + 'z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.3);}'
+    + '.sbar button{width:100%;padding:11px 0;border:none;border-radius:8px;font-size:15px;'
+    + 'font-weight:700;cursor:pointer;font-family:inherit;background:#fff;color:#1565c0;}'
+    + '@media print{.sbar{display:none;}body{padding-top:24px;}}';
+}
+
+function saveBarHTML() {
+  return '<div class="sbar"><button onclick="window.print()">打印 / 保存 PDF</button></div>';
+}
+
+/* bl(value, minWidthPx) — inline underline blank */
+function bl(v, w) {
+  return '<span class="bl"' + (w ? ' style="min-width:' + w + 'px"' : '') + '>'
+    + esc(v || '') + '</span>';
+}
+
+/* dtParts — break a datetime-local string into components */
+function dtParts(s) {
+  if (!s) return { y:'', mo:'', d:'', h:'', mi:'' };
+  var dt = new Date(s);
+  return { y: dt.getFullYear(), mo: dt.getMonth()+1, d: dt.getDate(),
+           h: dt.getHours(), mi: pad(dt.getMinutes()) };
+}
+
+/* ── Generate: 汽车租赁合同 ── */
+
+function buildRentalHTML(sigA, sigB, now) {
+  var f  = g;
+  var s1 = dtParts(f('r-start'));
+  var s2 = dtParts(f('r-end'));
+  var no = now.replace(/[年月日 :]/g, '');
+
+  return '<!DOCTYPE html><html lang="zh-CN"><head>'
+    + '<meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>汽车租赁合同</title>'
+    + '<style>' + cCSS() + '</style>'
+    + '</head><body>'
+    + saveBarHTML()
+
+    /* ── 标题 ── */
+    + '<h1>汽车租赁合同</h1>'
+    + '<p class="cno">N<sup>o</sup>&nbsp;' + esc(no) + '</p>'
+
+    /* ── 甲乙方信息 ── */
+    + '<div class="hdr2">'
+    + '<div class="hcol">'
+    + '<p>甲方（出租方）：' + bl(f('ra-name'), 130) + '</p>'
+    + '<p>合同签订地点：' + bl(f('ra-loc'), 150) + '</p>'
+    + '</div>'
+    + '<div class="hcol">'
+    + '<p>乙方（承租方）：' + bl(f('rb-name'), 130) + '</p>'
+    + '<p>合同签订地点：' + bl(f('rb-loc'), 150) + '</p>'
+    + '</div>'
+    + '</div>'
+
+    /* ── 一、租赁车辆情况 ── */
+    + '<p class="sh">一、租赁车辆情况、期限及租金：</p>'
+
+    + '<p class="p">1. 乙方向甲方租用号牌为' + bl(f('r-plate'),110) + '车辆，核定载人数'
+    + bl(f('r-seats'),34) + '人，从'
+    + bl(s1.y,46) + '年' + bl(s1.mo,24) + '月' + bl(s1.d,24) + '日'
+    + bl(s1.h,24) + '时' + bl(s1.mi,24) + '分至'
+    + bl(s2.y,46) + '年' + bl(s2.mo,24) + '月' + bl(s2.d,24) + '日'
+    + bl(s2.h,24) + '时' + bl(s2.mi,24) + '分止。</p>'
+
+    + '<p class="p">2. 双方约定租赁期限从'
+    + bl(s1.y,42) + '年' + bl(s1.mo,22) + '月' + bl(s1.d,22) + '日至'
+    + bl(s2.y,42) + '年' + bl(s2.mo,22) + '月' + bl(s2.d,22) + '日，日租'
+    + bl(f('r-dayrate'),48) + '元/天&nbsp;时租' + bl(f('r-hrrate'),48)
+    + '元/时，到期自还车，如有变动须获得甲方同意，否则甲方有权随时随地收回所租车辆，造成甲方经济损失的乙方应负所有责任并作相应赔偿。</p>'
+
+    + '<p class="p">3. 该车租赁价格日租' + bl(f('r-dayrate'),48) + '元，时租'
+    + bl(f('r-hrrate'),48) + '元，约定自还车，甲方收取乙方'
+    + bl(f('r-rent'),58) + '元租金，收' + bl(f('r-deposit'),58) + '元押金，成。</p>'
+
+    + '<p class="p">4. 乙方计划前往目的地' + bl(f('r-dest'),150)
+    + '，如有变动须获得甲方同意，否则甲方有权随时随地收回所租车辆，造成甲方经济损失的乙方应负所有责任并作相应赔偿。</p>'
+
+    + '<p class="p">5. 乙方实际还车时间' + bl('',38) + '年' + bl('',22) + '月' + bl('',22) + '日'
+    + bl('',22) + '时' + bl('',22) + '，乙方已还车签名确认' + bl('',110) + '</p>'
+    + '<p class="pi">甲方收取租金' + bl('',58) + '元，退回押金' + bl('',58) + '元，留滞章押金' + bl('',58) + '元</p>'
+
+    /* ── 二、甲方的权利和义务 ── */
+    + '<p class="sh">二、甲方的权利和义务：</p>'
+    + '<p class="p">1. 有下述任何一种情况发生时，甲方有权随时随地收回所租车辆，因此给甲方造成的经济损失，乙方应负有责任并作相应赔偿：</p>'
+    + '<p class="pi">（1）乙方利用所租车辆从事违法犯罪活动。</p>'
+    + '<p class="pi">（2）乙方将所租车辆转让、转租、出售、抵押、质押。</p>'
+    + '<p class="pi">（3）从事其他有损出租方车辆合法权益的活动。</p>'
+    + '<p class="pi">（4）未经甲方书面许可，乙方在车辆租赁期限结束后拖欠还车。</p>'
+    + '<p class="pi">（5）签订本合同后甲方无法与乙方取得联系。</p>'
+    + '<p class="p">2. 甲方不承担租赁车辆于租赁期间引发的第三者责任。</p>'
+    + '<p class="p">3. 其他的依法律、法规的规定甲方应有的权利。</p>'
+    + '<p class="p">4. 提供性能良好、各种证照及税费齐全的车辆，如因证照不齐造成的交通违章责任由甲方负责。</p>'
+    + '<p class="p">5. 预留乙方身份证及驾驶证印件并在租赁期间对车辆使用情况及客户信誉实施监督。</p>'
+    + '<p class="p">6. 租赁期内应帮助乙方处理已有的交通违章事故。</p>'
+
+    /* ── 三、乙方的权利和义务 ── */
+    + '<p class="sh">三、乙方的权利和义务：</p>'
+    + '<p class="p">1. 乙方租用车辆前，已检查车辆性状况良好，确保乙方在正常操作下不会影响乙方导致意外发生。</p>'
+    + '<p class="p">2. 乙方租用车辆前，必须提供身份证、驾驶证登记并留备份，乙方为非本市户口的须提供本市户口人员作担保。</p>'
+    + '<p class="p">3. 乙方必须提供身份证。</p>'
+    + '<p class="p">4. 乙方于租赁合同规定的租赁时限内，租赁期间拥有租赁车辆的使用权。</p>'
+    + '<p class="p">5. 乙方对租赁车辆承担自己已有的损伤不承担赔偿、维修及治。</p>'
+    + '<p class="p">6. 租赁期间乙方应遵守国家有关法律、法规、法令安全行车，因驾驶不当、违法、违纪、违章所造成的所有责任自行负责，并承担给甲方造成的经济损失，不得将车辆转租、转借、出售、典当、寄售、抵押，不得将车辆交与无证人员驾驶，否则乙方必须承担因此而发生的所有费用。</p>'
+    + '<p class="p">7. 发生交通事故立即通知甲方及保险公司，并承担有关部门的所有裁定责任，乙方（乙方或乙方家属）必须支付一切费用，待事故处理终结后，再由保险公司赔偿，不足部分仍由乙方负责，乙方并须承担事故及维修期间的车辆租金。</p>'
+    + '<p class="p">8. 租赁期间若发生车辆被盗、报废或其他形式的损失，乙方应负车辆损失之日起至甲方获得保险公司赔偿时止的车辆租金及车辆现价值和除保险赔付不足部分，如果在租车期间遗失车牌、行驶证或其他证件，乙方应承担补办费用及车辆由此停驶期间的租赁费用。</p>'
+    + '<p class="p">9. 由于乙方的原因造成的保险公司拒赔及免赔的所有损失及相关费用由乙方承担。</p>'
+    + '<p class="p">10. 乙方对租赁车辆使用范围' + bl('',160) + '，否则视为违约及产生所有责任由乙方承担。</p>'
+    + '<p class="p">11. 如果承租车辆在使用过程中，发生各种事故及其它原因导致车辆损坏，由甲方指定维修厂家，维修过程中接受乙方监督，维修费用由乙方承担。</p>'
+    + '<p class="p">12. 若发生事故，乙方还应承担车辆加速折旧费，折旧费为维修费的' + bl('',34) + '%。</p>'
+    + '<p class="p">13. 使用过程中不得用此车辆承载遗体及骨灰，如经发现乙方承担全款市场价购买此车辆。</p>'
+
+    /* ── 四、担保方 ── */
+    + '<p class="sh">四、担保方的权利和义务：</p>'
+    + '<p class="p">1. 担保方同意作为本合同乙方的保证人，保证乙方完全履行本合同中的全部义务，担保期限至乙方完全履行义务为止。</p>'
+    + '<p class="p">2. 如乙方不能履行合同或违约时，则由担保方承担连带责任；甲方可以直接向担保方提出要求。</p>'
+    + '<p class="p">3. 本担保为乙方发生租赁期间产生债权，本担保系不可撤销的担保，并独立于本合同其他条款，不以合同无效而无效。</p>'
+
+    /* ── 五、违约责任 ── */
+    + '<p class="sh">五、违约责任及争议的解决：</p>'
+    + '<p class="p">1. 除不可抗力之外，任何乙方违反合同，除赔偿相应经济损失外，还应向另一方支付总租金的' + bl('',34) + '%作为违约金。</p>'
+    + '<p class="p">2. 本合同一式两份，双方签字盖章生效，有关本合同一切争议，如协商不成，甲乙双方在租赁经营方所在地的人民法院起诉。</p>'
+
+    /* ── 签字区 ── */
+    + '<div class="sigrow">'
+    + '<div class="sigcol">'
+    + '<p>甲方：' + esc(f('ra-name')) + '</p>'
+    + '<p>甲方盖章：<img src="' + sigA + '" alt="甲方签名"></p>'
+    + '<p>经办人：' + bl(f('ra-handler'), 120) + '</p>'
+    + '<p>服务热线：' + bl(f('ra-tel'), 130) + '</p>'
+    + '</div>'
+    + '<div class="sigcol">'
+    + '<p>乙方签名：<img src="' + sigB + '" alt="乙方签名"></p>'
+    + '<p>身份证号码：' + esc(f('rb-id')) + '</p>'
+    + '<p>电话：' + esc(f('rb-tel')) + '</p>'
+    + '</div>'
+    + '</div>'
+
+    + '</body></html>';
+}
+
+/* ── Generate: 代驾协议 ── */
+
+function buildDriverHTML(sigA, sigB, now) {
+  var f  = g;
+  var s1 = dtParts(f('d-start'));
+  var s2 = dtParts(f('d-end'));
+
+  return '<!DOCTYPE html><html lang="zh-CN"><head>'
+    + '<meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>代驾协议</title>'
+    + '<style>' + cCSS() + '</style>'
+    + '</head><body>'
+    + saveBarHTML()
+
+    + '<h1>代驾协议</h1>'
+
+    /* ── 甲方 ── */
+    + '<p class="sh">甲方（委托方/客人）：</p>'
+    + '<p class="pi">姓名：' + bl(f('da-name'),100) + '&emsp;身份证号：' + bl(f('da-id'),170) + '&emsp;联系电话：' + bl(f('da-tel'),120) + '</p>'
+    + '<p class="pi">车辆信息：品牌' + bl(f('da-brand'),80) + '&emsp;型号' + bl(f('da-model'),100) + '&emsp;车牌号' + bl(f('da-plate'),90) + '</p>'
+
+    /* ── 乙方 ── */
+    + '<p class="sh">乙方（受托方/司机）：</p>'
+    + '<p class="pi">姓名/公司名：' + bl(f('db-name'),180) + '</p>'
+    + '<p class="pi">联系电话：' + bl(f('db-tel'),150) + '</p>'
+    + '<p class="pi">身份证号：' + bl(f('db-id'),190) + '</p>'
+
+    /* ── 一、服务内容 ── */
+    + '<p class="sh">一、服务内容</p>'
+    + '<p class="p">乙方驾驶甲方车辆，将甲方安全送达目的地。</p>'
+
+    /* ── 二、服务时间 ── */
+    + '<p class="sh">二、服务时间</p>'
+    + '<p class="pi">'
+    + bl(s1.y,46) + '年' + bl(s1.mo,24) + '月' + bl(s1.d,24) + '日'
+    + bl(s1.h,24) + '时' + bl(s1.mi,24) + '分至'
+    + bl(s2.y,46) + '年' + bl(s2.mo,24) + '月' + bl(s2.d,24) + '日'
+    + bl(s2.h,24) + '时' + bl(s2.mi,24) + '分'
+    + '</p>'
+
+    /* ── 三、费用 ── */
+    + '<p class="sh">三、费用</p>'
+    + '<p class="p">1. 总费用：人民币' + bl(f('d-fee'),80) + '元</p>'
+
+    /* ── 四、其他 ── */
+    + '<p class="sh">四、其他</p>'
+    + '<p class="p">本协议自签字之日起生效，服务完成且费用结清后终止。</p>'
+
+    /* ── 签字区 ── */
+    + '<div class="sigrow">'
+    + '<div class="sigcol">'
+    + '<p>甲方（签字）：<img src="' + sigA + '" alt="甲方签名"></p>'
+    + '<p>日期：' + bl(s1.y,46) + '年' + bl(s1.mo,24) + '月' + bl(s1.d,24) + '日</p>'
+    + '</div>'
+    + '<div class="sigcol">'
+    + '<p>乙方（签字）：<img src="' + sigB + '" alt="乙方签名"></p>'
+    + '<p>日期：' + bl(s1.y,46) + '年' + bl(s1.mo,24) + '月' + bl(s1.d,24) + '日</p>'
+    + '</div>'
+    + '</div>'
+
+    + '</body></html>';
+}
+
+/* ── Entry Point ── */
+
+function generate() {
+  var sigA = getSigURL('a');
+  var sigB = getSigURL('b');
+  var now  = fmtNow();
+  var html = type === 'rental' ? buildRentalHTML(sigA, sigB, now) : buildDriverHTML(sigA, sigB, now);
+  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var url  = URL.createObjectURL(blob);
+  var win  = window.open(url, '_blank');
+  if (!win) {
+    /* Fallback for aggressive popup blockers */
+    var a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.click();
+  }
+}
+
+/* Bootstrap */
+showStep(0);
+</script>
+</html>
